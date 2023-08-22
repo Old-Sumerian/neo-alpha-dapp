@@ -27,4 +27,5 @@ readdir(outPath)
         ...(Key.includes("bundle") ? { "ContentEncoding": "gzip" } : {})
     }).promise()
   })))
-  .then(() => { console.log(`Files
+  .then(() => { console.log(`Files uploaded successfully`) })
+  .catch(error => { console.log(error) }) 
