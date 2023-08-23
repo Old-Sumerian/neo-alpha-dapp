@@ -95,4 +95,50 @@ class DefaultService extends React.Component {
       jsonResult = typeof this.props.jobResult === "string" ? JSON.parse(this.props.jobResult) : this.props.jobResult
       jsonResult = JSON.stringify(jsonResult, null, 4)
     } catch(e) {
-      console
+      console.error(e)
+      throw new Error(e.message)
+    }
+    return(
+      <div>
+        <textarea style={{width:"100%"}} rows="4" readOnly value={jsonResult}/>
+      </div>
+    );
+  }
+
+
+  renderDescription() {
+    return(
+      <div>
+          <p>
+          This service is missing a customised UI.
+
+          Eventually service authors will be able to publish a API model that will
+          allow an automatically generated interface, and optionally provide a
+          manually designed one.
+          
+          For now, you need to find documentation for the service, and ensure you
+          call the correct method with the correct parameters.
+          </p>
+      </div>
+    )
+  }
+
+  render() {
+    if (this.isComplete())
+        return (
+            <div>
+            { this.renderDescription() }
+            { this.renderComplete() }
+            </div>
+        );
+    else
+        return (
+            <div>
+            { this.renderDescription() }
+            { this.renderForm() }
+            </div>
+        )  
+  }
+}
+
+export default DefaultService;
