@@ -23,4 +23,76 @@ class DefaultService extends React.Component {
   isComplete() {
     if (this.props.jobResult === undefined)
         return false;
-    e
+    else {
+        return true;
+    }
+  }
+
+  updateValid() {
+    let inputValid = true;
+    
+    try {
+        JSON.parse(this.state.paramString);
+    } catch(e) {
+        inputValid = false;
+    }
+
+    if (this.state.serviceName.length == 0)
+        inputValid = false;
+    
+    if (this.state.methodName.length == 0)
+        inputValid = false;
+        
+    this.setState({
+        inputValid: inputValid
+    });
+  }
+  
+  handleChange(type, e) {
+    this.setState({
+        [type]: e.target.value,
+    });
+    this.updateValid();
+  }
+
+  submitAction() {
+    this.props.showModalCallback(this.props.callModal);
+    this.props.callApiCallback(
+      this.state.serviceName,
+      this.state.methodName, 
+      JSON.parse(this.state.paramString)
+    );
+  }
+
+  renderForm() {
+    return(
+        <React.Fragment>
+        <div>
+        <label>
+          Service name:
+          <input type="text" value={this.state.serviceName} onChange={ this.handleChange.bind(this, 'serviceName') } />
+        </label>
+        <label>
+          Method name:
+          <input type="text" value={this.state.methodName} onChange={ this.handleChange.bind(this, 'methodName') } />
+        </label>
+        <br/>
+        <label style={{width:"100%"}}>
+          Params (as JSON):
+          <textarea style={{width:"100%"}} onChange={ this.handleChange.bind(this, 'paramString')} value={this.state.paramString} />
+        </label>
+            
+        <br/>
+        <Button type="primary" onClick={() => {this.submitAction(); }} disabled={!this.state.inputValid} >Call Agent API</Button>
+        </div>
+        </React.Fragment>
+        )
+  }
+  
+  renderComplete() {
+    let jsonResult
+    try {
+      jsonResult = typeof this.props.jobResult === "string" ? JSON.parse(this.props.jobResult) : this.props.jobResult
+      jsonResult = JSON.stringify(jsonResult, null, 4)
+    } catch(e) {
+      console
