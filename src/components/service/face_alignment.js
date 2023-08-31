@@ -78,4 +78,58 @@ class FaceAlignmentService extends React.Component {
     this.updateValid();
   }
 
-  submi
+  submitAction() {
+    this.props.showModalCallback(this.props.callModal);
+    this.props.callApiCallback(this.state.methodName, {
+        image: this.state.fileReader.result.split(',')[1],
+        source_bboxes: JSON.parse(this.state.facesString),
+    });
+  }
+
+  renderForm() {
+    return(
+        <React.Fragment>
+        <div>
+        {
+            !this.state.fileUploaded &&
+            <React.Fragment>
+                <br/>
+                <br/>
+                <Upload.Dragger name="file" accept=".jpg,.jpeg,.png" beforeUpload={(file)=>{ this.processFile(file); return false; }} >
+                    <p className="ant-upload-drag-icon">
+                        <Icon type="inbox" />
+                    </p>
+                    <p className="ant-upload-text">Click for file-chooser dialog or drag a file to this area to be analyzed.</p>
+                </Upload.Dragger>
+            </React.Fragment>
+        }
+        <div>
+        <label>
+          Faces JSON (you can get this from face detect):
+          <textarea onChange={ this.handleChange.bind(this, 'facesString')} value={this.state.facesString} />
+        </label>
+        </div>
+        <table><tbody>
+            <tr>
+                <td><b>File:</b></td>
+                <td>{this.state.file ? `${this.state.file.name}` : '(not uploaded)'}</td>
+            </tr>
+        </tbody>
+        </table>
+
+        <br/>
+        <br/>
+        {
+            this.state.fileUploaded &&
+            <img src={ this.state.fileReader.result } />
+        }
+        <br/>
+        <br/>
+        <Button type="primary" onClick={() => {this.submitAction(); }} disabled={!this.state.inputValid} >Call Agent API</Button>
+        </div>
+        </React.Fragment>
+        )
+  }
+  
+  renderComplete() {
+    var alignedFaceImgList = this.props.jobResult['aligned_faces'].map((ite
