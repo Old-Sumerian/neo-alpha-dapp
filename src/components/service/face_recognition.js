@@ -1,18 +1,24 @@
+
 import React from 'react';
 import {Layout, Divider, Card, Icon, Spin, Alert, Row, Col, Button, Tag, message, Table, Collapse, Steps, Modal, Upload} from 'antd';
-import styles from './face_detect.css.js';
+import { debounce } from 'underscore';
 
-class FaceDetectService extends React.Component {
+class FaceRecognitionService extends React.Component {
 
   constructor(props) {
     super(props);
 
     this.submitAction = this.submitAction.bind(this);
+    this.updateValid = this.updateValid.bind(this);
+    this.updateValid = debounce(this.updateValid, 500);
+
     this.state = {
         fileUploaded: false,
         file: undefined,
         fileReader: undefined,
-        methodName: "find_face",
+        methodName: "recognise_face",
+        facesString: '[{"x":10,"y":10,"w":100,"h":100}]',
+        inputValid: true,
     };
   }
 
@@ -23,6 +29,39 @@ class FaceDetectService extends React.Component {
         console.log(this.props.jobResult);
         return true;
     }
+  }
+
+  updateValid() {
+    let inputValid = true;
+    
+    try {
+        let faces = JSON.parse(this.state.facesString);
+        faces.forEach((item) => {
+          let expectedKeys = ['x', 'y', 'w', 'h'];
+          expectedKeys.forEach((k) => {
+            if (!(k in item)) inputValid = false;
+          });
+        });
+    } catch(e) {
+        inputValid = false;
+    }
+    
+    if (this.state.methodName.length == 0)
+        inputValid = false;
+
+    if (!this.state.fileUploaded)
+        inputValid = false;
+
+    this.setState({
+        inputValid: inputValid
+    });
+  }
+  
+  handleChange(type, e) {
+    this.setState({
+        [type]: e.target.value,
+    });
+    this.updateValid();
   }
   
   processFile(file) {
@@ -37,45 +76,15 @@ class FaceDetectService extends React.Component {
     });
 
     reader.readAsDataURL(file);
+    this.updateValid();
   }
 
   submitAction() {
     this.props.showModalCallback(this.props.callModal);
     this.props.callApiCallback(this.state.methodName, {
         image: this.state.fileReader.result.split(',')[1],
+        faces: JSON.parse(this.state.facesString)
     });
-  }
-
-  renderBoundingBox(result) {
-    // {"faces": [{"x": 511, "y": 170, "w": 283, "h": 312}, {"x": 61, "y": 252, "w": 236, "h": 259}]}
-    let img = this.refs.sourceImg;
-    let cnvs = this.refs.bboxCanvas;
-    let outsideWrap = this.refs.outsideWrap;
-    if (img === undefined || cnvs === undefined || outsideWrap == undefined)
-      return;
-    
-    outsideWrap.style.width = img.naturalWidth + "px";
-    outsideWrap.style.height = img.naturalHeight + "px";
-    cnvs.style.position = "absolute";
-    cnvs.style.left = img.offsetLeft + "px";
-    cnvs.style.top = img.offsetTop + "px";
-    cnvs.width = img.naturalWidth;
-    cnvs.height = img.naturalHeight;
-  
-    let ctx = cnvs.getContext("2d");
-    result["faces"].forEach((item) => {
-      ctx.beginPath();
-      ctx.rect(item["x"],item["y"],item["w"],item["h"]);
-      ctx.lineWidth = 3;
-      ctx.strokeStyle = '#00ff00';
-      ctx.stroke();
-    }); 
-  }
-
-  componentDidUpdate(prevProps) {
-    if (this.props.jobResult !== prevProps.jobResult) {
-      this.renderBoundingBox(this.props.jobResult);
-    }
   }
 
   renderForm() {
@@ -95,6 +104,12 @@ class FaceDetectService extends React.Component {
                 </Upload.Dragger>
             </React.Fragment>
         }
+        <div>
+        <label>
+          Faces JSON (you can get this from face detect):
+          <textarea onChange={ this.handleChange.bind(this, 'facesString')} value={this.state.facesString} />
+        </label>
+        </div>
         <table><tbody>
             <tr>
                 <td><b>File:</b></td>
@@ -111,7 +126,7 @@ class FaceDetectService extends React.Component {
         }
         <br/>
         <br/>
-        <Button type="primary" onClick={() => {this.submitAction(); }} disabled={!this.state.fileUploaded} >Call Agent API</Button>
+        <Button type="primary" onClick={() => {this.submitAction(); }} disabled={!this.state.inputValid} >Call Agent API</Button>
         </div>
         </React.Fragment>
         )
@@ -121,24 +136,17 @@ class FaceDetectService extends React.Component {
     let jsonResult = JSON.stringify(this.props.jobResult);
     return(
       <div>
-        <div>
-          <textarea rows="4" cols="50" readOnly value={jsonResult}/>
-        </div>
-        <div ref="outsideWrap" style={styles.outsideWrapper}>
-          <div style={styles.insideWrapper}>
-            <img ref="sourceImg" style={styles.coveredImage} src={this.state.fileReader.result}/>
-            <canvas ref="bboxCanvas" style={styles.coveringCanvas}/>
-          </div>
-        </div>
+        <textarea rows="4" cols="50" readOnly value={jsonResult}/>
       </div>
     );
   }
-  
+
   renderDescription() {
     return(
       <div>
           <p>
-          A service that detects the location of human faces and returns a 2d bounding box.
+          A service that takes an image and a bounding box for where a face exists and returns
+          a 128d vector representing the identity of the face.
           
           This is part of the <a href="https://github.com/singnet/face-services">face-services</a> suite of example
           SingularityNET services.
@@ -165,4 +173,4 @@ class FaceDetectService extends React.Component {
   }
 }
 
-export default FaceDetectService;
+export default FaceRecognitionService;

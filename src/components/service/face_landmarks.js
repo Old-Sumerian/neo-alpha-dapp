@@ -1,18 +1,26 @@
+
 import React from 'react';
 import {Layout, Divider, Card, Icon, Spin, Alert, Row, Col, Button, Tag, message, Table, Collapse, Steps, Modal, Upload} from 'antd';
-import styles from './face_detect.css.js';
+import { debounce } from 'underscore';
+import styles from './face_landmarks.css.js';
 
-class FaceDetectService extends React.Component {
+class FaceLandmarksService extends React.Component {
 
   constructor(props) {
     super(props);
 
     this.submitAction = this.submitAction.bind(this);
+    this.updateValid = this.updateValid.bind(this);
+    this.updateValid = debounce(this.updateValid, 500);
+
     this.state = {
         fileUploaded: false,
         file: undefined,
         fileReader: undefined,
-        methodName: "find_face",
+        methodName: "get_landmarks",  
+        facesString: '[{"x":10,"y":10,"w":100,"h":100}]',
+        landmarkModel: "68",
+        inputValid: true,
     };
   }
 
@@ -23,6 +31,42 @@ class FaceDetectService extends React.Component {
         console.log(this.props.jobResult);
         return true;
     }
+  }
+
+  updateValid() {
+    let inputValid = true;
+    
+    try {
+        let faces = JSON.parse(this.state.facesString);
+        faces.forEach((item) => {
+          let expectedKeys = ['x', 'y', 'w', 'h'];
+          expectedKeys.forEach((k) => {
+            if (!(k in item)) inputValid = false;
+          });
+        });
+    } catch(e) {
+        inputValid = false;
+    }
+    
+    if (this.state.methodName.length == 0)
+        inputValid = false;
+        
+    if (this.state.landmarkModel !== "68" && this.state.landmarkModel !== "5")
+        inputValid = false;
+
+    if (!this.state.fileUploaded)
+        inputValid = false;
+
+    this.setState({
+        inputValid: inputValid
+    });
+  }
+  
+  handleChange(type, e) {
+    this.setState({
+        [type]: e.target.value,
+    });
+    this.updateValid();
   }
   
   processFile(file) {
@@ -37,17 +81,30 @@ class FaceDetectService extends React.Component {
     });
 
     reader.readAsDataURL(file);
+    this.updateValid();
   }
 
   submitAction() {
     this.props.showModalCallback(this.props.callModal);
     this.props.callApiCallback(this.state.methodName, {
         image: this.state.fileReader.result.split(',')[1],
+        face_bboxes: JSON.parse(this.state.facesString),
+        landmark_model: this.state.landmarkModel,
     });
   }
 
-  renderBoundingBox(result) {
-    // {"faces": [{"x": 511, "y": 170, "w": 283, "h": 312}, {"x": 61, "y": 252, "w": 236, "h": 259}]}
+  drawX(ctx, x, y) {
+    let size = 3;
+    
+    ctx.moveTo(x - size, y - size);
+    ctx.lineTo(x + size, y + size);
+    ctx.stroke();
+
+    ctx.moveTo(x + size, y - size);
+    ctx.lineTo(x - size, y + size);
+  }
+
+  renderLandmarks(result) {
     let img = this.refs.sourceImg;
     let cnvs = this.refs.bboxCanvas;
     let outsideWrap = this.refs.outsideWrap;
@@ -63,18 +120,21 @@ class FaceDetectService extends React.Component {
     cnvs.height = img.naturalHeight;
   
     let ctx = cnvs.getContext("2d");
-    result["faces"].forEach((item) => {
+    result["landmarks"].forEach((item) => {
       ctx.beginPath();
-      ctx.rect(item["x"],item["y"],item["w"],item["h"]);
-      ctx.lineWidth = 3;
+      item["points"].forEach((p) => {
+        this.drawX(ctx, p['x'], p['y']);
+      })
+      ctx.lineWidth = 1;
       ctx.strokeStyle = '#00ff00';
       ctx.stroke();
-    }); 
+    });
+    
   }
 
   componentDidUpdate(prevProps) {
     if (this.props.jobResult !== prevProps.jobResult) {
-      this.renderBoundingBox(this.props.jobResult);
+      this.renderLandmarks(this.props.jobResult);
     }
   }
 
@@ -95,6 +155,17 @@ class FaceDetectService extends React.Component {
                 </Upload.Dragger>
             </React.Fragment>
         }
+        <div>
+        <label>
+          Landmark model:
+          <input type="text" value={this.state.landmarkModel} onChange={ this.handleChange.bind(this, 'landmarkModel') } />
+        </label>
+        <br/>
+        <label>
+          Faces JSON (you can get this from face detect):
+          <textarea onChange={ this.handleChange.bind(this, 'facesString')} value={this.state.facesString} />
+        </label>
+        </div>
         <table><tbody>
             <tr>
                 <td><b>File:</b></td>
@@ -111,7 +182,7 @@ class FaceDetectService extends React.Component {
         }
         <br/>
         <br/>
-        <Button type="primary" onClick={() => {this.submitAction(); }} disabled={!this.state.fileUploaded} >Call Agent API</Button>
+        <Button type="primary" onClick={() => {this.submitAction(); }} disabled={!this.state.inputValid} >Call Agent API</Button>
         </div>
         </React.Fragment>
         )
@@ -133,12 +204,13 @@ class FaceDetectService extends React.Component {
       </div>
     );
   }
-  
+
   renderDescription() {
     return(
       <div>
           <p>
-          A service that detects the location of human faces and returns a 2d bounding box.
+          A service that takes an image and a bounding box for where a face exists and returns
+          a list of 2d image coordinates, one for each facial landmark the service knows about.
           
           This is part of the <a href="https://github.com/singnet/face-services">face-services</a> suite of example
           SingularityNET services.
@@ -165,4 +237,4 @@ class FaceDetectService extends React.Component {
   }
 }
 
-export default FaceDetectService;
+export default FaceLandmarksService;
