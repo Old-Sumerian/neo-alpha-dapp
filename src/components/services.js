@@ -78,4 +78,45 @@ class Services extends React.Component {
 
   hexToAscii(hexString) { 
     let asciiString = Eth.toAscii(hexString);
-    return asciiString.substr(0,asciiString.indexOf("\0")); 
+    return asciiString.substr(0,asciiString.indexOf("\0")); // name is right-padded with null bytes
+  }
+
+  getServiceRegistrations(registry) {
+    return registry.listOrganizations()
+      .then(({ orgNames }) =>
+        Promise.all(orgNames.map(orgName => Promise.all([ Promise.resolve(orgName), registry.listServicesForOrganization(orgName) ])))
+      )
+      .then(servicesByOrg => {
+        const nonEmptyServiceLists = servicesByOrg.filter(([ , { serviceNames } ]) => serviceNames.length);
+        return Promise.all(
+          nonEmptyServiceLists.reduce((acc, [ orgName, { serviceNames } ]) =>
+            acc.concat(serviceNames.map(serviceName => Promise.all([
+              Promise.resolve(orgName),
+              registry.getServiceRegistrationByName(orgName, serviceName)
+            ])))
+          , [])
+        );
+      })
+      .then(servicesList =>
+        Promise.resolve(servicesList.map(([ orgName, { name, agentAddress, servicePath } ]) => ({ orgName, name, agentAddress, servicePath })))
+      )
+      .catch(console.error);
+  };
+
+  watchRegistries() {
+    if(typeof this.props.registries !== "undefined" && this.props.agentContract) {
+      Promise.all([
+        typeof this.props.registries["AlphaRegistry"] !== "undefined" ? this.props.registries["AlphaRegistry"].listRecords() : undefined,
+        typeof this.props.registries["Registry"] !== "undefined" ? this.getServiceRegistrations(this.props.registries["Registry"]) : undefined
+      ])
+      .then(([ alphaRegistryListing, registryListing ]) => {
+        let agents = [];
+
+        if (typeof alphaRegistryListing !== "undefined") {  
+          alphaRegistryListing[0].map((input, index) => {
+            const asciiName = this.hexToAscii(input);
+
+            const thisAgent = {
+              "name": asciiName,
+              "address": alphaRegistryListing[1][index],
+  
