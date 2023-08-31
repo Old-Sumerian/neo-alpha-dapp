@@ -113,3 +113,5 @@ class ExchangeService extends React.Component {
     )
   }
 }
+
+export default ExchangeService;
