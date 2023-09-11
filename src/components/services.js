@@ -119,4 +119,51 @@ class Services extends React.Component {
             const thisAgent = {
               "name": asciiName,
               "address": alphaRegistryListing[1][index],
-  
+              "key": [ alphaRegistryListing[1][index], asciiName ].filter(Boolean).join("/"),
+            };
+
+            if (thisAgent.name !== "" && thisAgent.address !== STRINGS.NULL_ADDRESS) {
+              agents.push(thisAgent);
+            }
+          });
+        }
+
+        if (typeof registryListing !== "undefined") {
+          registryListing.forEach(({ orgName, name, agentAddress, servicePath }) => {
+            const serviceAsciiName = this.hexToAscii(name);
+            const serviceAsciiPath = this.hexToAscii(servicePath);
+            const orgAsciiName = this.hexToAscii(orgName);
+
+            const serviceIdentifier = [ orgAsciiName, serviceAsciiPath, serviceAsciiName ].filter(Boolean).join("/");
+            
+            const thisAgent = {
+              "name": serviceIdentifier,
+              "address": agentAddress,
+              "key": [ agentAddress, serviceIdentifier ].filter(Boolean).join("/")
+            };
+
+            if (thisAgent.name !== "" && thisAgent.address !== STRINGS.NULL_ADDRESS) {
+              agents.push(thisAgent);
+            }
+          });
+        }
+
+        let promises = [];
+        
+        if (this.state.featured.length < 1) {
+          promises.push(fetch('/featured.json')
+            .then(response => response.json())
+            .then(response => {
+              this.setState({ "featured": response })
+              return Promise.resolve(response)
+            })
+          )
+        } else promises.push(Promise.resolve(this.state.featured))
+
+        for(let agent in agents) {
+          let agentInstance = this.props.agentContract.at(agents[agent].address);
+          agents[agent]['contractInstance'] = agentInstance;
+
+          let statePromise    = agentInstance.state();
+          let pricePromise    = agentInstance.currentPrice();
+          let endpointPromise = agentInstance.endpoi
