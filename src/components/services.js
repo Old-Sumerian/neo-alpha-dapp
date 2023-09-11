@@ -166,4 +166,55 @@ class Services extends React.Component {
 
           let statePromise    = agentInstance.state();
           let pricePromise    = agentInstance.currentPrice();
-          let endpointPromise = agentInstance.endpoi
+          let endpointPromise = agentInstance.endpoint();
+          promises.push(statePromise, pricePromise, endpointPromise);
+
+          Promise.all([statePromise, pricePromise, endpointPromise]).then(values => {
+            agents[agent]['state']        = values[0][0];
+            agents[agent]['currentPrice'] = values[1][0];
+            agents[agent]['endpoint']     = values[2][0];
+            
+          });
+        }
+
+        Promise.all(promises).then(([featured]) => {
+          if (this.props.network) {
+            let otherAgents = []
+            this.setState({
+              agents: Object.assign(
+                {},
+                {
+                  featured: Object.values(agents).filter(agent => {
+                    const test = featured.includes(agent.address)
+                    if (test) {
+                      return test
+                    } else {
+                      otherAgents.push(agent)
+                    }
+                  }),
+                  other: otherAgents
+                }
+              )
+            })
+          } else {
+            this.setState({
+              agents: []
+            })
+          }
+        });
+      });
+    }
+  }
+
+  render() {
+
+    let servicesTable = (columns, dataSource, featured) =>
+      <React.Fragment>
+        {/* featured ? <h5><Icon type="star" /> Featured</h5> : <h5>Other</h5> */}
+        <Table className="services-table" scroll={{ x: true }} columns={columns} pagination={dataSource.length > 20} dataSource={dataSource} />
+        <br/>
+      </React.Fragment>
+    
+    /* All services go in one table for now
+    let featuredServices = () => servicesTable(this.servicesTableKeys, this.state.agents.featured, true)
+    let otherServices = () => servicesTable(this.servicesTableKeys, this.state.agents.
