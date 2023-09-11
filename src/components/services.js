@@ -217,4 +217,51 @@ class Services extends React.Component {
     
     /* All services go in one table for now
     let featuredServices = () => servicesTable(this.servicesTableKeys, this.state.agents.featured, true)
-    let otherServices = () => servicesTable(this.servicesTableKeys, this.state.agents.
+    let otherServices = () => servicesTable(this.servicesTableKeys, this.state.agents.other)
+    */
+    // TODO: destroy the allServices table once we go live with the Featured agents distinction
+    let allServicesList = () => {
+      const serviceInOrg = name => name.split("/").length > 1;
+      return Object.values(this.state.agents)
+        .reduce((acc, cur) => cur.length !== 0 ? acc.concat(cur) : acc, [])
+        .sort((a, b) => {
+          const aInOrg = serviceInOrg(a.name);
+          const bInOrg = serviceInOrg(b.name);
+          if (aInOrg !== bInOrg) {
+            return bInOrg - aInOrg;
+          } else {
+            return a.name.localeCompare(b.name);
+          }
+        });
+    };
+
+    let allServicesTable = () => servicesTable(this.servicesTableKeys, allServicesList())
+
+    return(
+      <Card title={
+        <React.Fragment>
+          <Icon type="table" />
+          <Divider type="vertical"/>
+            Agents
+        </React.Fragment> }>
+        {/* TODO: Destroy the allServices table rendering once we go live with the Featured agents distinction, restore the two tables */} 
+        {
+          this.state.agents
+          && (
+            (this.state.agents.featured && this.state.agents.featured.length !== 0)
+            || (this.state.agents.other && this.state.agents.other.length !== 0)
+          )
+          && allServicesTable()
+        }
+        {
+          /*
+          {this.state.agents.featured && this.state.agents.featured.length !== 0 && featuredServices()}
+          {this.state.agents.other && this.state.agents.other.length !== 0 && otherServices()}
+          */
+        }
+      </Card>
+    )
+  }
+}
+
+export default Services;
